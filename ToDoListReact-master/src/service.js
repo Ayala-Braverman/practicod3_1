@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const apiUrl = "http://localhost:5246/api"; // כתובת ה־API שלך
+const apiUrl = process.env.REACT_APP_API_URL; // כתובת ה־API שלך
 
 // ✅ יוצרים מופע axios עם הגדרות בסיסיות
 const api = axios.create({

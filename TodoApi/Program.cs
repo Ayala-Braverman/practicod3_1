@@ -18,14 +18,12 @@ builder.Services.AddDbContext<ToDoDbContext>(o =>
 // ---------- CORS ----------
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy(name: MyAllowSpecificOrigins,
-        policy =>
-        {
-            policy.WithOrigins(
-                "https://todolistclient-kpds.onrender.com")
-                  .AllowAnyHeader()
-                  .AllowAnyMethod();
-        });
+    options.AddPolicy("AllowClient", policy =>
+    {
+        policy.WithOrigins("https://todolistclient-kpds.onrender.com")
+              .AllowAnyHeader()
+              .AllowAnyMethod();
+    });
 });
 
 // ---------- JWT Auth ----------

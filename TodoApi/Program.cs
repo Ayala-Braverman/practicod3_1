@@ -21,12 +21,13 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy(MyAllowSpecificOrigins, policy =>
     {
-        policy.WithOrigins(
-            "https://todolistclient-kpds.onrender.com")
-            .AllowAnyHeader()
-            .AllowAnyMethod();
+        policy.WithOrigins("https://todolistclient-kpds.onrender.com")
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials();
     });
 });
+
 
 // ---------- JWT Auth ----------
 var jwtSection = builder.Configuration.GetSection("Jwt");

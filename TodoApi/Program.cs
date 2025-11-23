@@ -6,8 +6,6 @@ using System.Security.Claims;
 using System.Text;
 using TodoApi;
 
-var MyAllowSpecificOrigins = "AllowClient";
-
 var builder = WebApplication.CreateBuilder(args);
 
 // ---------- DB ----------
@@ -16,13 +14,15 @@ builder.Services.AddDbContext<ToDoDbContext>(o =>
     o.UseMySql(cs, ServerVersion.AutoDetect(cs)));
 
 // ---------- CORS ----------
+// כרגע: פתוח לכל דומיין כדי לוודא שזה עובד בענן
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowClient", policy =>
     {
-        policy.WithOrigins("https://todolistclient-kpds.onrender.com")
-              .AllowAnyHeader()
-              .AllowAnyMethod();
+        policy
+            .AllowAnyOrigin()
+            .AllowAnyHeader()
+            .AllowAnyMethod();
     });
 });
 
@@ -51,6 +51,7 @@ builder.Services.AddEndpointsApiExplorer();
 
 var app = builder.Build();
 
+// סדר ה-middleware חשוב:
 app.UseCors("AllowClient");
 app.UseAuthentication();
 app.UseAuthorization();
@@ -61,7 +62,7 @@ string CreateJwtToken(int userId, string userName)
 {
     var claims = new[]
     {
-        new Claim("id", userId.ToString()), // מזהה המשתמש
+        new Claim("id", userId.ToString()),
         new Claim(JwtRegisteredClaimNames.Sub, userName)
     };
 
@@ -80,7 +81,7 @@ string CreateJwtToken(int userId, string userName)
 }
 
 
-// הרשמה
+// ---------- הרשמה ----------
 app.MapPost("/api/auth/register", async (ToDoDbContext db, User dto) =>
 {
     if (string.IsNullOrWhiteSpace(dto.UserName) || string.IsNullOrWhiteSpace(dto.PasswordHash))
@@ -101,14 +102,13 @@ app.MapPost("/api/auth/register", async (ToDoDbContext db, User dto) =>
     return Results.Ok(new { token, user = new { user.Id, user.UserName } });
 });
 
-// התחברות
+// ---------- התחברות ----------
 app.MapPost("/api/auth/login", async (ToDoDbContext db, User dto) =>
 {
     var user = await db.Users.FirstOrDefaultAsync(u => u.UserName == dto.UserName);
     if (user is null)
         return Results.Unauthorized();
 
-    // שימי לב - כאן ההשוואה חייבת להיות ל- dto.PasswordHash
     var ok = BCrypt.Net.BCrypt.Verify(dto.PasswordHash, user.PasswordHash);
     if (!ok)
         return Results.Unauthorized();
@@ -118,17 +118,17 @@ app.MapPost("/api/auth/login", async (ToDoDbContext db, User dto) =>
 });
 
 
-// ---------- קבוצת משימות ----------
+// ---------- קבוצת משימות (דורש התחברות) ----------
 var items = app.MapGroup("/api/items").RequireAuthorization();
 
-// --- שליפה של כל המשימות של המשתמש המחובר ---
+// כל המשימות של המשתמש המחובר
 items.MapGet("/", async (ToDoDbContext db, HttpContext ctx) =>
 {
     var userId = int.Parse(ctx.User.FindFirst("id")!.Value);
     return await db.Items.Where(i => i.UserId == userId).ToListAsync();
 });
 
-// --- שליפה לפי מזהה משימה ---
+// משימה לפי Id
 items.MapGet("/{id:int}", async (int id, ToDoDbContext db, HttpContext ctx) =>
 {
     var userId = int.Parse(ctx.User.FindFirst("id")!.Value);
@@ -136,7 +136,7 @@ items.MapGet("/{id:int}", async (int id, ToDoDbContext db, HttpContext ctx) =>
     return item is not null ? Results.Ok(item) : Results.NotFound();
 });
 
-// --- הוספת משימה ---
+// הוספת משימה
 items.MapPost("/", async (Item input, ToDoDbContext db, HttpContext ctx) =>
 {
     if (string.IsNullOrWhiteSpace(input.Name))
@@ -150,7 +150,7 @@ items.MapPost("/", async (Item input, ToDoDbContext db, HttpContext ctx) =>
     return Results.Created($"/api/items/{input.Id}", input);
 });
 
-// --- עדכון משימה ---
+// עדכון משימה
 items.MapPut("/{id:int}", async (int id, Item input, ToDoDbContext db, HttpContext ctx) =>
 {
     var userId = int.Parse(ctx.User.FindFirst("id")!.Value);
@@ -163,7 +163,7 @@ items.MapPut("/{id:int}", async (int id, Item input, ToDoDbContext db, HttpConte
     return Results.NoContent();
 });
 
-// --- מחיקת משימה ---
+// מחיקת משימה
 items.MapDelete("/{id:int}", async (int id, ToDoDbContext db, HttpContext ctx) =>
 {
     var userId = int.Parse(ctx.User.FindFirst("id")!.Value);
@@ -174,7 +174,6 @@ items.MapDelete("/{id:int}", async (int id, ToDoDbContext db, HttpContext ctx) =
     await db.SaveChangesAsync();
     return Results.NoContent();
 });
-
 
 // ---------- דף בדיקה ----------
 app.MapGet("/", () => "✅ Todo API with JWT is running securely!");

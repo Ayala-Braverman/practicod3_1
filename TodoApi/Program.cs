@@ -15,12 +15,14 @@ builder.Services.AddDbContext<ToDoDbContext>(o =>
 
 // ---------- CORS ----------
 // כרגע: פתוח לכל דומיין כדי לוודא שזה עובד בענן
+var MyAllowSpecificOrigins = "AllowClient";
+
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowClient", policy =>
+    options.AddPolicy(MyAllowSpecificOrigins, policy =>
     {
-        policy
-            .AllowAnyOrigin()
+        policy.WithOrigins(
+            "https://todolistclient-kpds.onrender.com")
             .AllowAnyHeader()
             .AllowAnyMethod();
     });
@@ -52,7 +54,7 @@ builder.Services.AddEndpointsApiExplorer();
 var app = builder.Build();
 
 // סדר ה-middleware חשוב:
-app.UseCors("AllowClient");
+app.UseCors(MyAllowSpecificOrigins);
 app.UseAuthentication();
 app.UseAuthorization();
 

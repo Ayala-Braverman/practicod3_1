@@ -6,10 +6,16 @@ using System.Security.Claims;
 using System.Text;
 using TodoApi;
 
-var MyAllowSpecificOrigins = "_myAllowSpecificOrigins";
+var MyAllowSpecificOrigins = "AllowClient";
 
 var builder = WebApplication.CreateBuilder(args);
 
+// ---------- DB ----------
+var cs = builder.Configuration["ToDoDB"];
+builder.Services.AddDbContext<ToDoDbContext>(o =>
+    o.UseMySql(cs, ServerVersion.AutoDetect(cs)));
+
+// ---------- CORS ----------
 builder.Services.AddCors(options =>
 {
     options.AddPolicy(name: MyAllowSpecificOrigins,
@@ -20,18 +26,6 @@ builder.Services.AddCors(options =>
                   .AllowAnyHeader()
                   .AllowAnyMethod();
         });
-});
-
-
-// ---------- DB ----------
-var cs = builder.Configuration["ToDoDB"];
-builder.Services.AddDbContext<ToDoDbContext>(o =>
-    o.UseMySql(cs, ServerVersion.AutoDetect(cs)));
-
-// ---------- CORS ----------
-builder.Services.AddCors(o =>
-{
-    o.AddDefaultPolicy(p => p.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod());
 });
 
 // ---------- JWT Auth ----------
